@@ -1,0 +1,9 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=48
+
+This big file defines functions that help to toggle the definitions of many things -- like mappings, settings 
+or abbreviations. The very simple application is to map (/ unmap) a macro when we hit (/rehit) the trigger. 
+A much more useful application is to map all the definitions from a function when hitting the trigger and 
+unload them on a second hit and reload on a third, etc..
+
+For examples of use, cf. the header part of the file, or  <http://hermitte.free.fr/vim/general.php >.
+
