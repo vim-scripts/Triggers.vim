@@ -1,22 +1,27 @@
 "===========================================================================
 " Vim script file
 "
-" File:		Triggers.vim -- v1.02
+" File:		Triggers.vim -- v1.01e
 " Author:	Luc Hermitte <EMAIL:hermitte@free.fr>
 " 		<URL:http://hermitte.free.fr/vim/>
-" Last Update:	09th May 2001
+" Last Update:	24th sep 2001
 "
 " Purpose:	Help to map a sequence of keys to activate and desactivate
 " 		either a mapping, a setting or an abbreviation.
 "               
-" Exemples:      
+" Remarks:
+"  * Do not forget to put VIM in your $PATH environment variable.
+"  * You may have to customize Trigger_File(<funcname>) in regards of your
+"    installation
+"
+" Exemples:
 "  * |call Trigger_Define( '<F7>', 'set ai' )
 "    When pressing <F7> a first time, 'set ai!' is executed. Pressing <F7>
 "    a second time executes 'set ai'. Of course, for sets, it is not really
 "    interresting thanks to "map <F7> :set ai!<CR>"... I must admit that I 
-"    haven't seen any interrested (yet) in switching the numerical value of
+"    haven't seen any interrest (yet) in switching the numerical value of
 "    settings, but it is handled ->
-"  * |call Trigger_Define( '<F4>', 'set tw=120 sw*=2' ) 
+"  * |call Trigger_Define( '<F4>', 'set tw=120 sw^=2' ) 
 "    ... works fine
 "  * |call Trigger_Define( '<F9>', 'inoremap { {}<Left>' )
 "    I'm sure you have allready seen an interrest in this one.
@@ -32,8 +37,8 @@
 "    
 "
 " Inspiration:	buffoptions.vim
-" TODO: automatically rebuilds switch file if the original file has been
-" updated.
+" Deps:		fileuptodate.vim
+"
 "---------------------------------------------------------------------------
 " Defines the following function:
 " * Internal functions: [not for end user]
@@ -41,8 +46,9 @@
 "  -> <i> function: Trigger_BuildInv4Set( action )
 "  -> <i> function: Trigger_BuildInv4Map_n_Abbr( action [, CheckOldValue] )
 "  -> <i> function: Trigger_BuildInv( action [, CheckOldValue] )
-"  -> i<> function: Trigger_File(funcname)
-"  -> i<> function: TRIGGER(action, opposite)
+"  -> <i> function: Trigger_File(funcname)
+"  -> <i> function: TRIGGER(action, opposite)
+"  -> <i> function: Trigger_FileName(funcname)
 " * "exported" functions: [yes! Use these ones]
 "  -> <e> function: Trigger_Define( keys, action [, verbose] )
 "  -> <e> function: Trigger_Function(keys, funcname, fileassociated)
@@ -54,6 +60,7 @@
 if !exists('g:Triggers_loaded')
   let g:Triggers_loaded = 1
 "
+so $VIMRUNTIME/macros/fileuptodate.vim
 "---------------------------------------------------------------------------
 "---------------------------------------------------------------------------
 " Function: TRIGGER(action, opposite)				<internal>
@@ -90,17 +97,20 @@ command! TRIGGER call TRIGGER(<args>)
 function Trigger_DoSwitch( ... )
   if (a:0 < 3) || (a:0 > 4)
     echohl ErrorMsg
-    echo "'Trigger_DoSwitch(keys, action, opposite [,verbose] )' incorrect number of arguments..."
+    echo "«Trigger_DoSwitch(keys, action, opposite [,verbose] )» ".
+    \	 "incorrect number of arguments..."
     echohl None
     return
   endif
   if (a:0 == 3) && (a:3 != "0")
-    exe "noremap ".a:1." :call Trigger_DoSwitch('".a:1."','".a:3."','".a:2."')<CR>"
+    exe "noremap ".a:1." :call Trigger_DoSwitch('".a:1."','".
+    \	a:3."','".a:2."')<CR>"
     exe a:2
     echo a:2
   else
     " delay the execution
-    exe "noremap ".a:1." :call Trigger_DoSwitch('".a:1."','".a:2."','".a:3."')<CR>"
+    exe "noremap ".a:1." :call Trigger_DoSwitch('".a:1."','".
+    \	a:2."','".a:3."')<CR>"
   endif
 endfunction
 "
@@ -127,9 +137,9 @@ function Trigger_BuildInv4Set( action )
       if val == "" 
         let opp = opp . ' ' . var . "!"
       elseif sign =~ "+="
-        let opp = opp . " ". var . "-=" . val2
+        let opp = opp . " ". var . "-=" . val
       elseif sign =~ "-="
-        let opp = opp . " ". var . "-=" . val2
+        let opp = opp . " ". var . "-=" . val
       else
         exe "let val2 = &" .var 
         let opp = opp . " ". var . "=" . val2
@@ -156,7 +166,7 @@ endfunction
 function Trigger_BuildInv4Map_n_Abbr( ... )
   if (a:0==0) || (a:0>2)
     echohl ErrorMsg
-    echo 'Trigger_BuildInv4Map_n_Abbr(action [,CheckOldValue]) : Incorect number of arguments...'
+    echo '«Trigger_BuildInv4Map_n_Abbr(action [,CheckOldValue])» : Incorect number of arguments...'
     echohl None
     return 
   endif
@@ -202,8 +212,8 @@ function Trigger_BuildInv4Map_n_Abbr( ... )
           let opp = ctx . 'unabbr ' . name
         else
           " first char matched is the nul char from @a
-          let val = substitute( @a, '.[ic]\s*\(\\ \|\S\)\+\s\+\*\=\(.*\)$', '\2', '' )
-          let va0 = substitute( @a, '.[ic]\s*\(\(\\ \|\S\)\+\)\s\+\*\=\(.*\)$', '\1', '' )
+          let val = substitute( @a, '.[ic]\s*\(\\ \|\S\)\+\s\+\*\=\(.*\)$','\2', '' )
+          let va0 = substitute( @a, '.[ic]\s*\(\(\\ \|\S\)\+\)\s\+\*\=\(.*\)$','\1', '' )
           if va0 != name
             echohl ErrorMsg
             echo 'Abbreviation [' . name . '] inconsistant with a previous one [' . va0 . ']...'
@@ -279,7 +289,8 @@ endfunction
 function Trigger_Define( ... )
   if (a:0 < 2) || (a:0 > 3)
     echohl ErrorMsg
-    echo "'Trigger_Define(keys, action [,verbose] )' incorrect number of arguments..."
+    echo '«Trigger_Define(keys, action [,verbose] )» '.
+    \	 'incorrect number of arguments...'
     echohl None
     return 
   endif
@@ -297,6 +308,15 @@ function Trigger_Define( ... )
 endfunction
 "
 "
+"---------------------------------------------------------------------------
+" Function: Trigger_FileName(funcname)				<internal>
+"
+" Returns the filename of the file containing the switch function for
+" <funcname>.
+function! Trigger_FileName(funcname)
+  return $VIMRUNTIME . '/settings/switch/' . a:funcname . '.switch'
+endfunction
+
 "---------------------------------------------------------------------------
 " Function: Trigger_File(funcname)				<internal>
 "
@@ -329,9 +349,8 @@ function Trigger_File(funcname)
   exe '%s/'.p_trig.'/\1\3, \2/'
   call append( "0", 'function! Switched_' . a:funcname . '()' )
 "3- And wq!
-  let filename = $VIMRUNTIME . '/settings/switch/' . a:funcname . '.switch'
-  exe "w! " . filename
-  q
+  let filename = Trigger_FileName(a:funcname)
+  exe "w! " . filename | q
 endfunction
 "
 "---------------------------------------------------------------------------
@@ -340,12 +359,14 @@ endfunction
 " Set a switch mapping on "keys" that executes in turn "funcname"() 
 " then its opposite/negate. "funcname"() is defined in <"fileassoc">.
 " This function search for Switched_"funcname"() in 
-" <$VIMRUNTIME/settings/switch/"funcname".switch>. If the file does not exists, 
-" it is build thanks to Trigger_File().
+" <$VIMRUNTIME/settings/switch/"funcname".switch>. If the file does not
+" exists, it is build thanks to Trigger_File().
 function Trigger_Function(keys, funcname, fileassoc)
-"1- Checks wheither the function has allready been computed to its opposite or not.
-  let filename = $VIMRUNTIME . '/settings/switch/' . a:funcname . '.switch'
-  if !filereadable( filename )
+"1- Checks wheither the function has allready been computed to its opposite
+"or not.
+  let filename = Trigger_FileName(a:funcname)
+  ""if !filereadable( filename )
+  if !IsFileUpToDate( a:fileassoc, filename )
     " Then build it !
     if Trigger_RebuildFile( a:funcname, a:fileassoc ) != ""
       return
@@ -363,21 +384,25 @@ function Trigger_Function(keys, funcname, fileassoc)
 endfunction
 "
 "
+let g:Triggers_this = expand("<sfile>:p")
 "---------------------------------------------------------------------------
 function Trigger_RebuildFile(funcname, fileassoc)
-  let this     = $VIMRUNTIME . '/macros/Triggers.vim' 
+  ""let this     = $VIMRUNTIME . '/macros/Triggers.vim' 
   if has("unix")
-    call system( "vim ".a:fileassoc." -R -u ". this ." -c \"call Trigger_File('".a:funcname."')\"")
+    call system( "vim ".a:fileassoc." -R -u ". g:Triggers_this 
+    \		." -c \"call Trigger_File('".a:funcname."')\"")
+    echo "unix"
   elseif has("win32")
-    call system( "gvim ".a:fileassoc." -R -u ". this ." -c \"call Trigger_File('".a:funcname."')\"")
+    call system( "gvim ".a:fileassoc." -R -u ". g:Triggers_this 
+    \		." -c \"call Trigger_File('".a:funcname."')\"")
   endif
   if v:shell_error
     echohl ErrorMsg
-    echohl "Can't execute vim with current environment..."
+    echo "Can't execute vim with current environment..."
     echohl None
     return
   endif
-  let filename = $VIMRUNTIME . '/settings/switch/' . a:funcname . '.switch'
+  let filename = Trigger_FileName(a:funcname)
   exe "so " . filename
 endfunction
 "---------------------------------------------------------------------------
